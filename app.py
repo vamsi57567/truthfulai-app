@@ -35,10 +35,12 @@ def process_query(query, progress=gr.Progress()):
 
     results = detector.detect(query, progress)
 
-    html = f"""<div style='padding:12px'>
+    html = f"""
+    <div style='padding:12px'>
         <h3>Answer</h3>
         <div>{results.get('final_answer')}</div>
-    </div>"""
+    </div>
+    """
 
     explanations = results.get("explanations_html", "")
     snippets = json.dumps(results.get("evidence_snippets", []), indent=2)
@@ -71,5 +73,9 @@ def create_ui():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
-    create_ui().launch(server_name="0.0.0.0", server_port=port)
+    port = int(os.environ.get("PORT", 8080))
+    create_ui().launch(
+        server_name="0.0.0.0",
+        server_port=port,
+        share=False
+    )
