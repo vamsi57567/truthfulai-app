@@ -2,66 +2,54 @@ import os
 import gradio as gr
 import json
 
-# Try importing real detector
 try:
     from detector import detector
-    REAL_MODE = True
-except Exception as e:
-    print("⚠️ Using stub mode:", e)
-    REAL_MODE = False
-
+except Exception:
     class StubDetector:
         def detect(self, query, progress=None):
             return {
-                "final_answer": "Stub mode active. Add your OpenAI key + detector.py to enable real AI.",
-                "explanations_html": "<p>No real model loaded.</p>",
+                "final_answer": "Stub mode active.",
+                "explanations_html": "<p>No model loaded.</p>",
                 "evidence_snippets": [],
-                "verification_log": [("info", "mode", "stub mode active")],
+                "verification_log": [],
                 "combined_confidence": 0
             }
-
     detector = StubDetector()
 
 
 def process_query(query, progress=gr.Progress()):
-    if not query or not query.strip():
+    if not query:
         return (
-            "<div style='padding:12px;color:#ef4444'>Please enter a claim or question.</div>",
+            "<div style='color:red'>Please enter something.</div>",
             "",
             "",
             "",
             0
         )
 
-    results = detector.detect(query, progress)
+    res = detector.detect(query, progress)
 
-    html = f"""
-    <div style='padding:12px'>
-        <h3>Answer</h3>
-        <div>{results.get('final_answer')}</div>
-    </div>
-    """
-
-    explanations = results.get("explanations_html", "")
-    snippets = json.dumps(results.get("evidence_snippets", []), indent=2)
-    log = "\n".join([f"{item[0]} {item[1]}: {item[2]}" for item in results.get("verification_log", [])])
-    confidence = results.get("combined_confidence", 0)
-
-    return html, explanations, snippets, log, confidence
+    return (
+        f"<div><h3>Answer</h3>{res['final_answer']}</div>",
+        res["explanations_html"],
+        json.dumps(res["evidence_snippets"], indent=2),
+        "\n".join([f"{a} {b}: {c}" for a, b, c in res["verification_log"]]),
+        res["combined_confidence"]
+    )
 
 
 def create_ui():
     with gr.Blocks(title="TruthfulAI") as demo:
         gr.Markdown("# TruthfulAI — Real Model Prototype")
 
-        inp = gr.Textbox(label="Input", placeholder="Enter a question or claim...", lines=3)
+        inp = gr.Textbox(label="Input", lines=3)
         btn = gr.Button("Analyze")
 
         out_html = gr.HTML()
-        out_expl = gr.HTML(label="Explanations")
-        out_snip = gr.Textbox(label="Evidence Snippets (JSON)", lines=8)
-        out_log = gr.Textbox(label="Verification Log", lines=8)
-        out_conf = gr.Number(label="Confidence (%)")
+        out_expl = gr.HTML()
+        out_snip = gr.Textbox(lines=8)
+        out_log = gr.Textbox(lines=8)
+        out_conf = gr.Number()
 
         btn.click(
             process_query,
@@ -77,5 +65,8 @@ if __name__ == "__main__":
     create_ui().launch(
         server_name="0.0.0.0",
         server_port=port,
-        share=False
+        share=False,
+        inbrowser=False,     # IMPORTANT
+        show_error=True,     # Good for debugging
+        max_threads=40       # Prevent idle shutdown
     )
