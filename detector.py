@@ -1,7 +1,6 @@
 import os
 from openai import OpenAI
 
-# Do NOT pass api_key manually — OpenAI SDK auto-loads env vars
 client = OpenAI()
 
 class Detector:
@@ -16,19 +15,28 @@ class Detector:
             }
 
         try:
-            # Call OpenAI reasoning model
-            resp = client.responses.create(
-                model="o3-mini",
-                input=f"Analyze this claim: {query}"
+            # Use the official ChatCompletion API
+            resp = client.chat.completions.create(
+                model="gpt-4.1-mini",   # o3-mini is not available in Python SDK
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a factual verification assistant."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Analyze this claim factually: {query}"
+                    }
+                ]
             )
 
-            answer = resp.output_text
+            answer = resp.choices[0].message["content"]
 
             return {
                 "final_answer": answer,
                 "explanations_html": f"<p>{answer}</p>",
                 "evidence_snippets": [],
-                "verification_log": [("info", "model", "o3-mini used")],
+                "verification_log": [("info", "model", "gpt-4.1-mini used")],
                 "combined_confidence": 90,
             }
 
