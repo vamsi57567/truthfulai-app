@@ -1,7 +1,12 @@
 import os
 from openai import OpenAI
 
-client = OpenAI()
+# Force the OpenAI client to use Railway’s outbound proxy
+client = OpenAI(
+    base_url="https://api.openai.com/v1",
+    api_key=os.getenv("OPENAI_API_KEY"),
+    http_client=None  # <-- required so Railway proxy is used automatically
+)
 
 class Detector:
     def detect(self, query, progress=None):
@@ -15,28 +20,18 @@ class Detector:
             }
 
         try:
-            # Use the official ChatCompletion API
-            resp = client.chat.completions.create(
-                model="gpt-4.1-mini",   # o3-mini is not available in Python SDK
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a factual verification assistant."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Analyze this claim factually: {query}"
-                    }
-                ]
+            resp = client.responses.create(
+                model="o3-mini",
+                input=f"Analyze this claim: {query}",
             )
 
-            answer = resp.choices[0].message["content"]
+            answer = resp.output_text
 
             return {
                 "final_answer": answer,
                 "explanations_html": f"<p>{answer}</p>",
                 "evidence_snippets": [],
-                "verification_log": [("info", "model", "gpt-4.1-mini used")],
+                "verification_log": [("info", "model", "o3-mini used")],
                 "combined_confidence": 90,
             }
 
